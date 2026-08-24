@@ -2,20 +2,20 @@
 
 > **Built for the Agentic Cinema Hackathon (Parallel Track)**
 
-CineScout is an AI agent that eliminates manual film pre-production overhead. It parses raw screenplay excerpts, analyzes visual and technical scene requirements, and invokes live web search via the **Parallel Search SDK (`parallel-web`)** and **Gemini 1.5 (`google-genai`)** to deliver live, verified location venues, municipal permit regulations, and logistical advisories backed by live source URLs.
+CineScout is an AI agent that eliminates manual film pre-production overhead. It parses raw screenplay excerpts, analyzes visual and technical scene requirements, and invokes live web search via the **Parallel Search SDK (`parallel-web`)** and **Gemini 3.5 (`google-genai`)** to deliver live, verified location venues, municipal permit regulations, and logistical advisories backed by live source URLs.
 
 ---
 
 ## 🎬 Core Problem & Solution
 
 - **The Problem:** Film production crews waste dozens of hours manually searching for filming locations, cross-referencing local noise bylaws, and calculating generator/permit requirements from scripts. Generic LLMs hallucinate venues and non-existent municipal permits.
-- **The CineScout Solution:** CineScout uses **Gemini 1.5** to break down scene logistics, formulate targeted queries, and invoke **Parallel Search (`parallel.beta.search`)** at runtime to pull live, real-world venue data, permit lead times, and municipal regulations with source citations.
+- **The CineScout Solution:** CineScout uses **Gemini 3.5** to break down scene logistics, formulate targeted queries, and invoke **Parallel Search (`parallel.beta.search`)** at runtime to pull live, real-world venue data, permit lead times, and municipal regulations with source citations.
 
 ---
 
 ## 🛠️ Tech Stack
 
-- **AI Engine:** Google Gemini 1.5 Flash (`google-genai`)
+- **AI Engine:** Google Gemini 3.5 Flash (`google-genai`)
 - **Web Search Engine:** Parallel Search API (`parallel-web`)
 - **User Interface:** Streamlit (Dual-column interactive dashboard)
 - **Environment & Tools:** Python 3.10+, `python-dotenv`, `pydantic`
@@ -27,7 +27,7 @@ CineScout is an AI agent that eliminates manual film pre-production overhead. It
 ```mermaid
 flowchart TD
     A[User Input: Screenplay Excerpt + City] --> B[CineScout Engine / engine.py]
-    B --> C[Gemini 1.5 Scene Breakdown]
+    B --> C[Gemini 3.5 Scene Breakdown]
     C --> D[Formulate 3 Search Queries: Venues, Permits, Logistics]
     D --> E[Parallel Search Tool Call\nparallel.beta.search]
     E --> F[Live Verified Web Sources & URL Citations]
@@ -62,7 +62,7 @@ response = client.beta.search(
 ```
 CineScout/
 ├── app.py              # Streamlit dashboard UI
-├── engine.py           # Gemini 1.5 + Parallel Search SDK tool calling logic
+├── engine.py           # Gemini 3.5 + Parallel Search SDK tool calling logic
 ├── requirements.txt    # Project dependencies
 ├── .env.example        # Template for API keys
 ├── .gitignore          # Git ignore configuration

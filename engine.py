@@ -1,10 +1,12 @@
 import os
 import json
 from typing import Dict, Any, List, Optional
-from dotenv import load_dotenv
-
-# Load environment variables from .env file if present
-load_dotenv()
+try:
+    from dotenv import load_dotenv
+    # Load environment variables from .env file if present
+    load_dotenv()
+except ImportError:
+    pass
 
 # Try importing google-genai and parallel-web SDKs
 try:
@@ -34,42 +36,68 @@ def search_production_web(objective: str, query1: str, query2: str = "", query3:
     if PARALLEL_AVAILABLE and parallel_key:
         try:
             client = Parallel(api_key=parallel_key)
-            # Mandatory user-specified call signature
-            response = client.beta.search(
-                objective=objective,
-                search_queries=queries,
-                mode="fast",
-                max_results=5
-            )
-            
+
+            # Call client.search (without invalid max_results parameter)
+            if hasattr(client, "search"):
+                response = client.search(
+                    objective=objective,
+                    search_queries=queries,
+                    mode="fast",
+                )
+            elif hasattr(client, "beta") and hasattr(client.beta, "search"):
+                response = client.beta.search(
+                    objective=objective,
+                    search_queries=queries,
+                    mode="fast",
+                )
+            else:
+                raise AttributeError("Parallel SDK search method not found on client.")
+
             # Format output from Parallel Search SDK
             results_data = []
             if hasattr(response, "results") and response.results:
                 for item in response.results:
-                    results_data.append({
-                        "title": getattr(item, "title", "Web Source"),
-                        "url": getattr(item, "url", "https://example.com"),
-                        "snippet": getattr(item, "snippet", str(item))
-                    })
+                    # Extract snippet or join excerpts if available
+                    snippet_text = getattr(item, "snippet", "")
+                    if not snippet_text and hasattr(item, "excerpts") and item.excerpts:
+                        snippet_text = " ".join(item.excerpts) if isinstance(item.excerpts, list) else str(item.excerpts)
+
+                    results_data.append(
+                        {
+                            "title": getattr(item, "title", "Web Source"),
+                            "url": getattr(item, "url", "https://example.com"),
+                            "snippet": snippet_text or str(item),
+                        }
+                    )
             elif isinstance(response, list):
                 for item in response:
-                    results_data.append({
-                        "title": item.get("title", "Web Source"),
-                        "url": item.get("url", "https://example.com"),
-                        "snippet": item.get("snippet", str(item))
-                    })
+                    results_data.append(
+                        {
+                            "title": item.get("title", "Web Source"),
+                            "url": item.get("url", "https://example.com"),
+                            "snippet": item.get("snippet", item.get("excerpts", str(item))),
+                        }
+                    )
             else:
-                results_data = [{"title": "Parallel Search Results", "url": "https://parallel.ai", "snippet": str(response)}]
+                results_data = [
+                    {
+                        "title": "Parallel Search Results",
+                        "url": "https://parallel.ai",
+                        "snippet": str(response),
+                    }
+                ]
 
             return {
                 "status": "success",
                 "live_search_executed": True,
                 "objective": objective,
                 "queries": queries,
-                "results": results_data
+                "results": results_data,
             }
         except Exception as e:
-            print(f"[CineScout Tool Warning] Parallel API call failed ({e}). Falling back to simulated live search data.")
+            print(
+                f"[CineScout Tool Warning] Parallel API call failed ({e}). Falling back to simulated live search data."
+            )
 
     # Graceful Fallback if PARALLEL_API_KEY is not set or SDK fails
     return _generate_fallback_search_results(objective, queries)
@@ -236,7 +264,7 @@ Synthesize this data into a JSON object matching this exact structure:
 Return ONLY valid JSON.
 """
             response = client.models.generate_content(
-                model="gemini-1.5-flash",
+                model="gemini-3.7-flash",
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",

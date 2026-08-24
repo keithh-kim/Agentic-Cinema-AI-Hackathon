@@ -11,102 +11,190 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for Premium Film Aesthetics & Dark Glassmorphism
+# Custom CSS for Modern UI (ui.watermelon.sh / motion-primitives / recent.design aesthetic)
 st.markdown("""
 <style>
-    /* Dark Cinematic Background & Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+    /* Global Canvas & Dot Grid Mesh Backdrop */
     .stApp {
-        background-color: #0c0f17;
-        color: #e2e8f0;
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        background-color: #09090b;
+        background-image: 
+            radial-gradient(ellipse at 50% -10%, rgba(120, 119, 198, 0.15) 0%, transparent 60%),
+            radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+        background-size: 100% 100%, 24px 24px;
+        color: #f4f4f5;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        letter-spacing: -0.01em;
     }
 
-    /* Glassmorphic Container Cards */
+    /* Monospace elements */
+    code, .stCode, pre, .mono-font {
+        font-family: 'JetBrains Mono', 'Geist Mono', ui-monospace, monospace !important;
+    }
+
+    /* Sidebar Styling */
+    [data-testid="stSidebar"] {
+        background-color: rgba(12, 12, 15, 0.95);
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(20px);
+    }
+
+    /* Glassmorphic Container Cards with Kinetic Hover Effects */
     .glass-card {
-        background: rgba(18, 24, 38, 0.75);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
+        background: rgba(18, 18, 21, 0.75);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
         border: 1px solid rgba(255, 255, 255, 0.08);
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 18px;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 20px;
+        box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), 
+                    border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                    box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .glass-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(255, 255, 255, 0.16);
+        box-shadow: 0 16px 48px -12px rgba(0, 0, 0, 0.6);
     }
 
     .venue-card {
-        background: linear-gradient(135deg, rgba(16, 37, 34, 0.6) 0%, rgba(18, 24, 38, 0.8) 100%);
-        border: 1px solid rgba(16, 185, 129, 0.3);
-        border-radius: 10px;
-        padding: 16px;
-        margin-bottom: 14px;
+        background: linear-gradient(135deg, rgba(16, 37, 34, 0.5) 0%, rgba(18, 18, 21, 0.85) 100%);
+        border: 1px solid rgba(16, 185, 129, 0.25);
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 16px;
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .venue-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(16, 185, 129, 0.45);
     }
 
     .permit-card {
-        background: linear-gradient(135deg, rgba(39, 32, 16, 0.6) 0%, rgba(18, 24, 38, 0.8) 100%);
-        border: 1px solid rgba(245, 158, 11, 0.3);
-        border-radius: 10px;
-        padding: 16px;
-        margin-bottom: 14px;
+        background: linear-gradient(135deg, rgba(39, 32, 16, 0.5) 0%, rgba(18, 18, 21, 0.85) 100%);
+        border: 1px solid rgba(245, 158, 11, 0.25);
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 16px;
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .permit-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(245, 158, 11, 0.45);
     }
 
     .logistics-card {
-        background: linear-gradient(135deg, rgba(23, 30, 48, 0.6) 0%, rgba(18, 24, 38, 0.8) 100%);
-        border: 1px solid rgba(59, 130, 246, 0.3);
-        border-radius: 10px;
-        padding: 16px;
-        margin-bottom: 14px;
+        background: linear-gradient(135deg, rgba(23, 30, 48, 0.5) 0%, rgba(18, 18, 21, 0.85) 100%);
+        border: 1px solid rgba(59, 130, 246, 0.25);
+        border-radius: 14px;
+        padding: 20px;
+        margin-bottom: 16px;
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .logistics-card:hover {
+        transform: translateY(-2px);
+        border-color: rgba(59, 130, 246, 0.45);
     }
 
     /* Pill Badges */
     .badge-live {
-        background-color: rgba(16, 185, 129, 0.2);
-        color: #10b981;
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        border: 1px solid rgba(16, 185, 129, 0.4);
+        background-color: rgba(16, 185, 129, 0.12);
+        color: #34d399;
+        padding: 4px 12px;
+        border-radius: 9999px;
+        font-family: 'JetBrains Mono', 'Geist Mono', monospace;
+        font-size: 0.75rem;
+        font-weight: 500;
+        letter-spacing: 0.03em;
+        border: 1px solid rgba(16, 185, 129, 0.3);
     }
 
     .badge-simulated {
-        background-color: rgba(99, 102, 241, 0.2);
-        color: #818cf8;
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        border: 1px solid rgba(99, 102, 241, 0.4);
+        background-color: rgba(99, 102, 241, 0.12);
+        color: #a5b4fc;
+        padding: 4px 12px;
+        border-radius: 9999px;
+        font-family: 'JetBrains Mono', 'Geist Mono', monospace;
+        font-size: 0.75rem;
+        font-weight: 500;
+        letter-spacing: 0.03em;
+        border: 1px solid rgba(99, 102, 241, 0.3);
     }
 
     .badge-score {
-        background-color: #059669;
-        color: #ffffff;
-        padding: 3px 8px;
-        border-radius: 6px;
+        background-color: #10b981;
+        color: #09090b;
+        padding: 4px 12px;
+        border-radius: 9999px;
         font-weight: 700;
-        font-size: 0.85rem;
+        font-size: 0.8rem;
+        font-family: 'JetBrains Mono', 'Geist Mono', monospace;
     }
 
-    /* Headers */
+    /* Modern Typography & Headings */
     h1, h2, h3, h4 {
-        color: #f8fafc !important;
+        color: #fafafa !important;
         font-weight: 700 !important;
+        letter-spacing: -0.02em !important;
     }
 
-    /* Custom Streamlit Button Styling */
-    .stButton>button {
-        background: linear-gradient(90deg, #ec4899 0%, #8b5cf6 100%);
-        color: white;
-        font-weight: 700;
-        border: none;
-        border-radius: 8px;
-        padding: 12px 24px;
-        transition: all 0.3s ease;
+    /* Sleek Input Controls */
+    .stTextArea textarea, .stSelectbox [data-baseweb="select"] {
+        background-color: rgba(24, 24, 27, 0.75) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border-radius: 12px !important;
+        color: #f4f4f5 !important;
+        transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
     }
-    
+
+    .stTextArea textarea:focus, .stSelectbox [data-baseweb="select"]:focus-within {
+        border-color: rgba(255, 255, 255, 0.4) !important;
+        box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1) !important;
+    }
+
+    /* High-Contrast Pill Primary CTA Button */
+    .stButton>button {
+        background-color: #ffffff !important;
+        color: #09090b !important;
+        font-weight: 700 !important;
+        font-size: 0.95rem !important;
+        border: 1px solid rgba(255, 255, 255, 0.9) !important;
+        border-radius: 9999px !important;
+        padding: 12px 28px !important;
+        box-shadow: 0 4px 14px 0 rgba(255, 255, 255, 0.15) !important;
+        transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+        letter-spacing: -0.01em !important;
+    }
+
     .stButton>button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(236, 72, 153, 0.4);
+        transform: translateY(-2px) scale(1.01) !important;
+        background-color: #f4f4f5 !important;
+        box-shadow: 0 8px 24px 0 rgba(255, 255, 255, 0.25) !important;
+    }
+
+    /* Tab Styling */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 8px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        border-radius: 8px;
+        padding: 8px 16px;
+        transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        color: #a1a1aa;
+    }
+
+    .stTabs [aria-selected="true"] {
+        background-color: rgba(255, 255, 255, 0.08) !important;
+        color: #ffffff !important;
     }
 </style>
 """, unsafe_allow_html=1)
@@ -168,7 +256,7 @@ with st.sidebar:
     st.markdown("---")
     st.subheader("⚙️ Agent Architecture")
     st.markdown("""
-    - **LLM Engine:** Gemini 1.5 Flash (`google-genai`)
+    - **LLM Engine:** Gemini 3.5 Flash (`google-genai`)
     - **Search SDK:** Parallel Search (`parallel-web`)
     - **Execution Mode:** `parallel.beta.search`
     """)
@@ -232,8 +320,8 @@ with col_right:
     if not dossier:
         st.info("👈 Select a demo scene on the left and click **🚀 Scout Scene** to generate your live Production Dossier.")
     else:
-        meta = dossier.get("execution_meta", {})
-        gemini_status = "Gemini 1.5 Live" if meta.get("gemini_live") else "Synthesized Dossier"
+        meta = dossier.get("execution_meta", {}) if isinstance(dossier, dict) else {}
+        gemini_status = "Gemini 3.7 Live" if meta.get("gemini_live") else "Synthesized Dossier"
         parallel_status = "Parallel Search Live" if meta.get("parallel_live") else "Simulated Web Search"
         
         st.markdown(f"""
