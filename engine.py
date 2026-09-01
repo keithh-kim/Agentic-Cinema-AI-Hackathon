@@ -1,14 +1,13 @@
 import os
 import json
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 try:
     from dotenv import load_dotenv
-    # Load environment variables from .env file if present
     load_dotenv()
 except ImportError:
     pass
 
-# Try importing google-genai and parallel-web SDKs
+# SDK Imports
 try:
     from google import genai
     from google.genai import types
@@ -29,63 +28,44 @@ def search_production_web(objective: str, query1: str, query2: str = "", query3:
     using Parallel Search SDK (parallel-web).
     """
     parallel_key = os.environ.get("PARALLEL_API_KEY")
-    queries = [q for q in [query1, query2, query3] if q and q.strip()]
+    queries = [q.strip() for q in [query1, query2, query3] if q and q.strip()]
 
-    print(f"[CineScout Tool] Executing Parallel Search for objective: '{objective}' with queries: {queries}")
+    print(f"[CineScout Tool] Executing Parallel Search for objective: '{objective}' | Queries: {queries}")
 
     if PARALLEL_AVAILABLE and parallel_key:
         try:
             client = Parallel(api_key=parallel_key)
 
-            # Call client.search (without invalid max_results parameter)
-            if hasattr(client, "search"):
-                response = client.search(
-                    objective=objective,
-                    search_queries=queries,
-                    mode="fast",
-                )
-            elif hasattr(client, "beta") and hasattr(client.beta, "search"):
-                response = client.beta.search(
-                    objective=objective,
-                    search_queries=queries,
-                    mode="fast",
-                )
-            else:
+            search_fn = getattr(client, "search", getattr(getattr(client, "beta", None), "search", None))
+            if not search_fn:
                 raise AttributeError("Parallel SDK search method not found on client.")
 
-            # Format output from Parallel Search SDK
+            response = search_fn(
+                objective=objective,
+                search_queries=queries[:3],
+                mode="fast",
+            )
+
             results_data = []
-            if hasattr(response, "results") and response.results:
-                for item in response.results:
-                    # Extract snippet or join excerpts if available
+            raw_items = getattr(response, "results", response)
+
+            if isinstance(raw_items, list):
+                for item in raw_items[:6]:
                     snippet_text = getattr(item, "snippet", "")
                     if not snippet_text and hasattr(item, "excerpts") and item.excerpts:
                         snippet_text = " ".join(item.excerpts) if isinstance(item.excerpts, list) else str(item.excerpts)
+                    elif isinstance(item, dict):
+                        snippet_text = item.get("snippet", item.get("excerpts", ""))
 
-                    results_data.append(
-                        {
-                            "title": getattr(item, "title", "Web Source"),
-                            "url": getattr(item, "url", "https://example.com"),
-                            "snippet": snippet_text or str(item),
-                        }
-                    )
-            elif isinstance(response, list):
-                for item in response:
-                    results_data.append(
-                        {
-                            "title": item.get("title", "Web Source"),
-                            "url": item.get("url", "https://example.com"),
-                            "snippet": item.get("snippet", item.get("excerpts", str(item))),
-                        }
-                    )
-            else:
-                results_data = [
-                    {
-                        "title": "Parallel Search Results",
-                        "url": "https://parallel.ai",
-                        "snippet": str(response),
-                    }
-                ]
+                    # Truncate snippets to 350 chars to keep context light and prevent token bloat
+                    raw_str = snippet_text or str(item)
+                    clean_snippet = (raw_str[:350] + "...") if len(raw_str) > 350 else raw_str
+
+                    results_data.append({
+                        "title": getattr(item, "title", item.get("title", "Web Source") if isinstance(item, dict) else "Web Source"),
+                        "url": getattr(item, "url", item.get("url", "https://example.com") if isinstance(item, dict) else "https://example.com"),
+                        "snippet": clean_snippet,
+                    })
 
             return {
                 "status": "success",
@@ -95,11 +75,8 @@ def search_production_web(objective: str, query1: str, query2: str = "", query3:
                 "results": results_data,
             }
         except Exception as e:
-            print(
-                f"[CineScout Tool Warning] Parallel API call failed ({e}). Falling back to simulated live search data."
-            )
+            print(f"[CineScout Tool Warning] Parallel API call failed ({e}). Falling back to simulated live search data.")
 
-    # Graceful Fallback if PARALLEL_API_KEY is not set or SDK fails
     return _generate_fallback_search_results(objective, queries)
 
 
@@ -144,7 +121,7 @@ def _generate_fallback_search_results(objective: str, queries: List[str]) -> Dic
         venues = [
             {
                 "title": "Retro 70s Diner & Grill - Vintage Set",
-                "url": "https://filmlocations.com/vintage-diner-nairobi",
+                "url": "https://filmlocations.com/vintage-diner",
                 "snippet": "Authentic chrome trim, vinyl booths, checkered flooring, neon signage, and fully operational commercial kitchen for prop food styling."
             },
             {
@@ -194,22 +171,23 @@ def _generate_fallback_search_results(objective: str, queries: List[str]) -> Dic
 def scout_scene(screenplay_text: str, target_city: str = "Nairobi, Kenya") -> Dict[str, Any]:
     """
     Main autonomous agent entry point. Accepts screenplay excerpt and target city,
-    orchestrates Gemini 1.5 and Parallel Search SDK, and returns a structured Production Dossier.
+    orchestrates Gemini 3.7 Flash and Parallel Search SDK, and returns a structured Production Dossier.
     """
     gemini_key = os.environ.get("GEMINI_API_KEY")
 
-    # Formulate search objective and queries based on scene content
-    objective = f"Find verified filming venues, municipal permits, and safety bylaws for film production in {target_city} based on scene script."
+    first_line = screenplay_text.strip().split("\n")[0] if screenplay_text else "EXT. LOCATION - DAY"
+
+    # Targeted query formulation with negative exclusions (prevents tax offices & film school courses)
+    objective = f"Find rentable filming venues, municipal permits, and production safety bylaws in {target_city}."
     
-    # Formulate 3 distinct search queries
-    query1 = f"filming location venue {target_city} {screenplay_text[:60].replace('\n', ' ')}"
-    query2 = f"municipal film commission permit guidelines lead time {target_city}"
-    query3 = f"film production drone noise curfew safety bylaws {target_city}"
+    query1 = f"rentable filming location shoot venue hire {target_city} {first_line} -school -diploma -course -academy"
+    query2 = f"municipal film commission shooting permit application guidelines lead time {target_city} -tax -revenue"
+    query3 = f"film production drone UAV night noise curfew safety bylaws {target_city}"
 
     # Step 1: Call Parallel Web Search
     search_data = search_production_web(objective, query1, query2, query3)
 
-    # Step 2: Gemini Synthesis or Intelligent Structured Synthesis
+    # Step 2: Gemini 3.7 Flash Synthesis
     if GENAI_AVAILABLE and gemini_key:
         try:
             client = genai.Client(api_key=gemini_key)
@@ -233,45 +211,49 @@ Synthesize this data into a JSON object matching this exact structure:
   }},
   "venues": [
     {{
-      "name": "Venue Name",
-      "description": "Why this venue matches the script",
-      "address": "Address or area in {target_city}",
-      "url": "Live URL from search results",
+      "name": "Specific Venue Name in {target_city}",
+      "description": "Why this physical venue matches the script visual directives",
+      "address": "Address or neighborhood in {target_city}",
+      "url": "Live URL from search results or realistic official source",
       "suitability_score": "95%",
       "key_features": ["Feature 1", "Feature 2"]
     }}
   ],
   "permits": [
     {{
-      "authority": "Governing Board or Agency",
+      "authority": "Governing Film Commission or Municipal Body",
       "permit_name": "Official Permit Name",
       "lead_time": "Estimated processing time e.g. 3-5 days",
-      "estimated_fee": "Estimated cost",
-      "application_url": "URL from search results",
-      "key_requirements": ["Req 1", "Req 2"]
+      "estimated_fee": "Estimated commercial rate",
+      "application_url": "URL from search results or official portal",
+      "key_requirements": ["Requirement 1", "Requirement 2"]
     }}
   ],
   "logistics": [
     {{
       "category": "Power / Sound / Drones / Parking / Safety",
-      "advisory": "Specific warning or guideline",
+      "advisory": "Specific operational risk or regulation",
       "mitigation_strategy": "Actionable producer solution"
     }}
   ],
   "citations": ["URL 1", "URL 2"]
 }}
 
-Return ONLY valid JSON.
+Rules:
+- Under "venues", provide ONLY physical rentable filming spaces, rooftops, or studios in {target_city}. NEVER list tax departments, immigration bureaus, or university courses.
+- Ensure all list attributes are valid JSON lists.
+- Return ONLY valid JSON.
 """
             response = client.models.generate_content(
                 model="gemini-3.7-flash",
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
-                    temperature=0.2
+                    temperature=0.2,
+                    thinking_config=types.ThinkingConfig(thinking_budget=0)
                 )
             )
-            dossier = json.loads(response.text)
+            dossier = json.loads(response.text.strip())
             dossier["raw_search_queries"] = [query1, query2, query3]
             dossier["execution_meta"] = {
                 "gemini_live": True,
@@ -282,15 +264,14 @@ Return ONLY valid JSON.
         except Exception as e:
             print(f"[CineScout Engine Warning] Gemini API call failed ({e}). Using intelligent fallback synthesizer.")
 
-    # Intelligent Synthesis Fallback (Guarantees perfect response structure even offline)
+    # Intelligent Synthesis Fallback (Guarantees structured output offline)
     return _synthesize_fallback_dossier(screenplay_text, target_city, search_data)
 
 
 def _synthesize_fallback_dossier(screenplay_text: str, target_city: str, search_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Generates a complete, highly-detailed Production Dossier from search data."""
+    """Generates a complete Production Dossier from search data when LLM is unreachable."""
     first_line = screenplay_text.strip().split("\n")[0] if screenplay_text else "EXT. LOCATION - DAY"
     
-    # Extract search result URLs
     urls = [r.get("url") for r in search_data.get("results", []) if "url" in r]
     if not urls:
         urls = ["https://kfcb.go.ke/filming-permits", "https://kicc.co.ke/filming-venues"]
@@ -305,15 +286,15 @@ def _synthesize_fallback_dossier(screenplay_text: str, target_city: str, search_
         url = r.get("url", "")
         snippet = r.get("snippet", "")
         
-        if "permit" in title.lower() or "license" in title.lower() or "county" in title.lower() or "kfcb" in title.lower():
+        if any(w in title.lower() for w in ["permit", "license", "county", "kfcb", "commission"]):
             permits_list.append({
-                "authority": "Kenya Film Classification Board & Municipal Council" if "nairobi" in target_city.lower() else "Local Municipal Film Commission",
+                "authority": "Municipal Film Commission & Local Council",
                 "permit_name": title,
                 "lead_time": "3 - 5 Business Days",
                 "estimated_fee": "$150 - $400 USD (Commercial Rate)",
                 "application_url": url,
                 "key_requirements": [
-                    "Local filming agent/fixer representation",
+                    "Local filming agent / location fixer representation",
                     "Detailed script synopsis and shoot schedule",
                     "Comprehensive public liability insurance certificate"
                 ]
@@ -326,29 +307,29 @@ def _synthesize_fallback_dossier(screenplay_text: str, target_city: str, search_
                 "url": url,
                 "suitability_score": "94%",
                 "key_features": [
-                    "High-voltage generator hookups available on site",
-                    "Dedicated holding room for crew & talents",
-                    "Nighttime production clearance with security control"
+                    "High-voltage power hookups on site",
+                    "Dedicated holding room for crew & talent",
+                    "Nighttime production clearance with perimeter control"
                 ]
             })
 
     if not venues_list:
         venues_list = [
             {
-                "name": f"KICC Heliport & SkyDeck ({target_city})",
-                "description": "High-altitude skyline location with 360-degree urban exposure, ideal for cinematic night scenes and cyberpunk lighting setups.",
-                "address": f"City Centre, {target_city}",
+                "name": f"City Skyline Terrace ({target_city})",
+                "description": "High-elevation location with 360-degree urban exposure, ideal for cinematic night scenes and high-contrast lighting setups.",
+                "address": f"Central District, {target_city}",
                 "url": "https://kicc.co.ke/filming-venues",
                 "suitability_score": "96%",
-                "key_features": ["300ft Elevation", "3-Phase High Output Power", "Heavy Freight Elevator"]
+                "key_features": ["High Elevation Deck", "3-Phase Power Distribution", "Service Freight Elevator"]
             },
             {
-                "name": f"Westlands Urban Roof Complex ({target_city})",
-                "description": "Modern architectural rooftop with exposed metallic trusses, neon backdrop suitability, and isolated audio environment.",
-                "address": f"Westlands, {target_city}",
+                "name": f"Industrial Quarter Studios ({target_city})",
+                "description": "Modern architectural space with exposed metallic trusses, neon backdrop suitability, and isolated audio environment.",
+                "address": f"Commercial Zone, {target_city}",
                 "url": "https://alchemistnairobi.com/location-scouting",
                 "suitability_score": "91%",
-                "key_features": ["Neon Aesthetics", "Sound Greenroom", "Private Access Ramp"]
+                "key_features": ["Exposed Trusses", "Production Greenroom", "Private Equipment Ramp"]
             }
         ]
 
@@ -356,14 +337,14 @@ def _synthesize_fallback_dossier(screenplay_text: str, target_city: str, search_
         permits_list = [
             {
                 "authority": "Municipal Film Commission",
-                "permit_name": "Commercial Location & Sound Permit",
+                "permit_name": "Commercial Filming & Location Clearance",
                 "lead_time": "3 Business Days",
                 "estimated_fee": "$250 USD",
                 "application_url": "https://kfcb.go.ke/filming-permits",
                 "key_requirements": [
                     "Public Notice to adjacent property owners",
-                    "Fire Safety Officer standby for night operations",
-                    "Approved traffic management plan if using street cranes"
+                    "Fire safety officer standby for night operations",
+                    "Approved traffic management plan if utilizing street cranes"
                 ]
             }
         ]
@@ -375,32 +356,32 @@ def _synthesize_fallback_dossier(screenplay_text: str, target_city: str, search_
             "aesthetic_vibes": f"High contrast visual aesthetic in {target_city}. Requires specialized atmospheric lighting, elevated camera mounts, and controlled audio perimeter.",
             "technical_challenges": [
                 "Low-light high-contrast camera sensor exposure management",
-                "Rooftop wind noise control for exterior dialogue",
+                "Wind noise isolation for exterior dialogue",
                 "High-voltage power distribution for 10K/HMI lights",
-                "Late night sound curfew compliance after 10:00 PM"
+                "Municipal sound curfew compliance after 10:00 PM"
             ]
         },
         "venues": venues_list,
         "permits": permits_list,
         "logistics": [
             {
-                "category": "⚡ Power & Electrical",
-                "advisory": "Rooftops and vintage venues often lack sufficient breaker capacity for heavy production lighting rigs.",
+                "category": "Power & Electrical",
+                "advisory": "Rooftops and industrial locations often lack sufficient breaker capacity for heavy production lighting rigs.",
                 "mitigation_strategy": "Dispatch 50kW silent twin-generator truck with dedicated feeder cable runs up the service elevator shaft."
             },
             {
-                "category": "🚁 Drone & Aerial Filming",
+                "category": "Drone & Aerial Filming",
                 "advisory": "Urban airspace in metropolitan regions requires Civil Aviation Authority (KCAA/FAA) clearance.",
-                "mitigation_strategy": "File flight log matrix 7 days in advance with licensed ROC drone operator and notify local police station."
+                "mitigation_strategy": "File flight log matrix 7 days in advance with licensed drone operator and notify local authorities."
             },
             {
-                "category": "🔊 Sound & Night Curfew",
+                "category": "Sound & Night Curfew",
                 "advisory": "Commercial amplification after 10:00 PM requires municipal noise exemption permits.",
-                "mitigation_strategy": "Use hypercardioid directional microphones with physical blimps/deadcats and schedule heavy audio scenes prior to 10:00 PM."
+                "mitigation_strategy": "Use hypercardioid directional microphones with physical blimps/deadcats and schedule loud audio takes prior to 10:00 PM."
             },
             {
-                "category": "🛡️ Crew Safety & Stunts",
-                "advisory": "Rooftop perimeter hazards during nighttime shoots require stunt safety riggers.",
+                "category": "Crew Safety & Rigging",
+                "advisory": "Perimeter hazards during nighttime shoots require dedicated stunt safety riggers.",
                 "mitigation_strategy": "Install edge-guard wire harnesses and maintain designated safety marshals for cast and crew."
             }
         ],
