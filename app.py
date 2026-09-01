@@ -439,7 +439,7 @@ with st.sidebar:
   st.markdown(
       """
         <div style="font-family:'Courier Prime',monospace; font-size:.78rem; line-height:1.9; color:var(--ink);">
-        LLM ····· Gemini 2.5 Flash<br>
+        LLM ····· Gemini 3.7 Flash<br>
         SEARCH ··· parallel-web SDK<br>
         MODE ····· Fast Spatial Extraction
         </div>
