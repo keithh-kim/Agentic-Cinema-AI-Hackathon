@@ -1,0 +1,13 @@
+[theme]
+base = "light"
+primaryColor = "#1C1A17"
+backgroundColor = "#EFEAE0"
+secondaryBackgroundColor = "#FBF9F4"
+textColor = "#1C1A17"
+font = "sans serif"
+
+[client]
+# "viewer" hides Deploy + dev options (rerun/clear cache/settings) from anyone
+# viewing the app. Use "minimal" instead if you still want Print/Screencast
+# available during your own testing.
+toolbarMode = "viewer"

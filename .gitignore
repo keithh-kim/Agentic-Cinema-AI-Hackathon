@@ -30,8 +30,6 @@ env/
 # Environment Variables & Secrets
 .env
 
-# Streamlit
-.streamlit/
 
 # IDE / OS
 .vscode/
