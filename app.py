@@ -109,11 +109,20 @@ st.markdown(
     [data-testid="stSidebar"]{
         background-color:#E3DCC9;
         border-right:2px solid var(--ink);
-        background-image: radial-gradient(circle, rgba(28,26,23,0.35) 2.5px, transparent 2.6px);
-        background-size: 100% 46px;
-        background-position: 14px 10px;
+        /* eyelet holes, confined to a narrow strip along the left edge only.
+           Previous version sized this tile at 100% of the sidebar width, so
+           the "35% 32%" highlight center was 35% of the FULL sidebar width —
+           a huge soft glow, not a small dot highlight. Fixing the tile to a
+           small fixed width and turning off horizontal repeat keeps both
+           layers confined to one narrow column near the edge. */
+        background-image:
+            radial-gradient(circle at 40% 35%, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 60%),
+            radial-gradient(circle, rgba(28,26,23,0.9) 2.5px, transparent 2.8px);
+        background-size: 26px 46px, 26px 46px;
+        background-position: 0 12px, 0 12px;
+        background-repeat: repeat-y, repeat-y;
     }
-    [data-testid="stSidebar"] > div{ padding-left:14px; }
+    [data-testid="stSidebar"] > div{ padding-left:36px; padding-right:16px; }
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3{
         font-family:'Bebas Neue', sans-serif !important;
         letter-spacing:.05em;
@@ -124,7 +133,60 @@ st.markdown(
     [data-testid="stSidebar"] [data-testid="stCaptionContainer"]{
         color:var(--ink) !important;
     }
-    [data-testid="stSidebar"] hr{ border-color:var(--ink); opacity:.25; }
+    [data-testid="stSidebar"] hr{ border-color:var(--ink); opacity:.2; }
+
+    /* Masthead block: title + running take counter, sits above the sheets */
+    .side-masthead{ margin-bottom:4px; }
+    .side-meta{
+        font-family:'Courier Prime', monospace;
+        font-size:.72rem;
+        color:var(--ink-soft);
+        line-height:1.7;
+        border-top:1px dashed rgba(28,26,23,0.3);
+        padding-top:6px;
+        margin-top:6px;
+    }
+    .side-meta b{ color:var(--ink); }
+
+    /* Mini index-card, same language as the main dossier sheets, scaled
+       down to fit the sidebar column */
+    .side-sheet{
+        background:var(--card);
+        border:1px solid var(--ink);
+        border-radius:2px;
+        padding:14px 14px 10px 14px;
+        margin:18px 0 20px 0;
+        position:relative;
+        box-shadow:2px 2px 0 rgba(28,26,23,0.12);
+    }
+    .side-sheet::before{
+        content:attr(data-tab);
+        position:absolute;
+        top:-10px; left:12px;
+        font-family:'Courier Prime', monospace;
+        font-size:.6rem;
+        letter-spacing:.09em;
+        text-transform:uppercase;
+        background:var(--ink);
+        color:var(--card);
+        padding:2px 8px;
+        border-radius:2px;
+    }
+    .side-sheet strong{
+        font-family:'Courier Prime', monospace;
+        font-size:.68rem;
+        letter-spacing:.07em;
+        text-transform:uppercase;
+        color:var(--ink-soft);
+    }
+    .side-sheet code{
+        font-size:.74rem;
+        background:transparent !important;
+        padding:0 !important;
+        color:var(--ink) !important;
+    }
+    .side-sheet hr{ margin:8px 0 !important; opacity:.15 !important; }
+    .side-key-row{ display:flex; align-items:center; justify-content:space-between; margin:8px 0; }
 
     /* ---------- Rubber-stamp badges ---------- */
     .stamp{
@@ -405,49 +467,67 @@ LEO (25) crouches behind a stack of wooden crates, holding a flickering tactical
 }
 
 # Sidebar
-with st.sidebar:
-  st.markdown("### CINESCOUT")
-  st.caption("PRODUCTION COORDINATOR — BINDER 01")
-  st.markdown("---")
+if "take_count" not in st.session_state:
+  st.session_state.take_count = 0
 
-  st.markdown("**ENV. KEYS**")
+
+def _bump_take():
+  st.session_state.take_count += 1
+
+
+with st.sidebar:
+  # ---- Masthead ----
+  st.markdown('<div class="side-masthead">', unsafe_allow_html=True)
+  st.markdown("### CINESCOUT")
+  st.markdown(
+      f"""<div class="side-meta">
+          PRODUCTION COORDINATOR — BINDER 01<br>
+          <b>TAKE {st.session_state.take_count:03d}</b> · this session
+      </div>""",
+      unsafe_allow_html=True,
+  )
+  st.markdown("</div>", unsafe_allow_html=True)
+
+  # ---- Sheet: env keys / connection status ----
   gemini_key = os.environ.get("GEMINI_API_KEY")
   parallel_key = os.environ.get("PARALLEL_API_KEY")
 
+  st.markdown('<div class="side-sheet" data-tab="Status">', unsafe_allow_html=True)
   st.markdown(
-      "`GEMINI_API_KEY`<br>"
-      + (
-          "<span class='stamp stamp-live'>Active</span>"
-          if gemini_key
-          else "<span class='stamp stamp-offline'>Offline Demo</span>"
-      ),
+      f"""
+      <div class="side-key-row">
+          <code>GEMINI_API_KEY</code>
+          {"<span class='stamp stamp-live'>Active</span>" if gemini_key else "<span class='stamp stamp-offline'>Offline</span>"}
+      </div>
+      <div class="side-key-row">
+          <code>PARALLEL_API_KEY</code>
+          {"<span class='stamp stamp-live'>Active</span>" if parallel_key else "<span class='stamp stamp-offline'>Offline</span>"}
+      </div>
+      """,
       unsafe_allow_html=True,
   )
-  st.write("")
-  st.markdown(
-      "`PARALLEL_API_KEY`<br>"
-      + (
-          "<span class='stamp stamp-live'>Active</span>"
-          if parallel_key
-          else "<span class='stamp stamp-offline'>Offline Demo</span>"
-      ),
-      unsafe_allow_html=True,
-  )
+  st.markdown("</div>", unsafe_allow_html=True)
 
-  st.markdown("---")
-  st.markdown("**AGENT SPEC**")
+  # ---- Sheet: agent spec ----
+  st.markdown('<div class="side-sheet" data-tab="Spec">', unsafe_allow_html=True)
   st.markdown(
       """
-        <div style="font-family:'Courier Prime',monospace; font-size:.78rem; line-height:1.9; color:var(--ink);">
-        LLM ····· Gemini 3.7 Flash<br>
-        SEARCH ··· parallel-web SDK<br>
-        MODE ····· Fast Spatial Extraction
-        </div>
-        """,
+      <div style="font-family:'Courier Prime',monospace; font-size:.78rem; line-height:2; color:var(--ink);">
+      LLM ····· Gemini 3.7 Flash<br>
+      SEARCH ··· parallel-web SDK<br>
+      MODE ····· Fast Spatial Extraction
+      </div>
+      """,
       unsafe_allow_html=True,
   )
-  st.markdown("---")
-  st.caption("Built for the Agentic Cinema Hackathon")
+  st.markdown("</div>", unsafe_allow_html=True)
+
+  st.markdown(
+      """<div class="side-meta" style="text-align:center; border-top:1px dashed rgba(28,26,23,0.3); padding-top:10px;">
+          Built for the Agentic Cinema Hackathon
+      </div>""",
+      unsafe_allow_html=True,
+  )
 
 # Clapper Header
 st.markdown('<div class="clapper-bar"></div>', unsafe_allow_html=True)
@@ -527,7 +607,9 @@ with col_left:
       ),
   )
 
-  scout_button = st.button("▸ Scout Scene", use_container_width=True)
+  scout_button = st.button(
+      "▸ Scout Scene", use_container_width=True, on_click=_bump_take
+  )
   st.markdown("</div>", unsafe_allow_html=True)
 
   if scout_button:
